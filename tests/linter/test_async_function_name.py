@@ -25,7 +25,7 @@ func no_await():
 """,
 ])
 def test_async_function_name_ok(code):
-    simple_ok_check(code, disable=["unused-argument", "missing-cancellation-check", "missing-cancellation-token-argument"])
+    simple_ok_check(code, disable=["unused-argument", "missing-ct-check", "missing-ct-arg", "missing-ct-param"])
 
 
 @pytest.mark.parametrize('code,line', [
@@ -43,4 +43,4 @@ func _internal_method():
 """, 2),
 ])
 def test_async_function_name_nok(code, line):
-    simple_nok_check(code, "async-function-name", line=line, disable=["unused-argument", "missing-cancellation-check", "missing-cancellation-token-argument"])
+    simple_nok_check(code, "async-function-name", line=line, disable=["unused-argument", "missing-ct-check", "missing-ct-arg", "missing-ct-param"])
