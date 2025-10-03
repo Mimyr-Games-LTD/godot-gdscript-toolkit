@@ -31,9 +31,13 @@ func typed_param(ct: CancellationToken):
     await async_method(ct)
     return
 """,
+"""
+func apply_effect(ct: CancellationToken):
+    await _units().wait_for_all_units_death_animation_awaitable().wait(ct)
+"""
 ])
 def test_missing_cancellation_token_argument_ok(code):
-    simple_ok_check(code, disable=["unused-argument", "missing-cancellation-check"])
+    simple_ok_check(code, disable=["unused-argument", "missing-cancellation-check", "async-function-name"])
 
 
 @pytest.mark.parametrize('code,line', [
@@ -56,7 +60,7 @@ func typed_param(ct: CancellationToken):
 """, 3),
 ])
 def test_missing_cancellation_token_argument_nok(code, line):
-    simple_nok_check(code, "missing-cancellation-token-argument", line=line, disable=["unused-argument", "missing-cancellation-check"])
+    simple_nok_check(code, "missing-cancellation-token-argument", line=line, disable=["unused-argument", "missing-cancellation-check", "async-function-name"])
 
 
 # Tests for gdlint ignore comments
@@ -84,4 +88,4 @@ func test3(ct):
 """,
 ])
 def test_missing_cancellation_token_argument_with_ignore_comments(code):
-    simple_ok_check(code, disable=["unused-argument", "missing-cancellation-check"])
+    simple_ok_check(code, disable=["unused-argument", "missing-cancellation-check", "async-function-name"])

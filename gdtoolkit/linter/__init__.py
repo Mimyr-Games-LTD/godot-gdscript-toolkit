@@ -96,6 +96,7 @@ DEFAULT_CONFIG = MappingProxyType(
         # await checks
         "missing-cancellation-check": None,
         "missing-cancellation-token-argument": None,
+        "async-function-name": None,
         # never-returning-function # for non-void, typed functions
         # simplify-boolean-expression
         # consider-using-in

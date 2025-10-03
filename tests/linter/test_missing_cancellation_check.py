@@ -46,7 +46,7 @@ func with_if(ct):
 """,
 ])
 def test_missing_cancellation_check_ok(code):
-    simple_ok_check(code, disable=["unused-argument", "missing-cancellation-token-argument"])
+    simple_ok_check(code, disable=["unused-argument", "missing-cancellation-token-argument", "async-function-name"])
 
 
 @pytest.mark.parametrize('code,line', [
@@ -70,7 +70,7 @@ func baz(ct):
 """, 6),
 ])
 def test_missing_cancellation_check_nok(code, line):
-    simple_nok_check(code, "missing-cancellation-check", line=line, disable=["unused-argument", "missing-cancellation-token-argument"])
+    simple_nok_check(code, "missing-cancellation-check", line=line, disable=["unused-argument", "missing-cancellation-token-argument", "async-function-name"])
 
 
 @pytest.mark.parametrize('code,lines', [
@@ -118,4 +118,4 @@ func test4(ct):
 """,
 ])
 def test_missing_cancellation_check_with_ignore_comments(code):
-    simple_ok_check(code, disable=["unused-argument", "missing-cancellation-token-argument"])
+    simple_ok_check(code, disable=["unused-argument", "missing-cancellation-token-argument", "async-function-name"])
