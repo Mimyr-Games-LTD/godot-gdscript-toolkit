@@ -157,6 +157,13 @@ def _is_await_statement(stmt: Tree) -> bool:
                 for expr_child in child.children:
                     if isinstance(expr_child, Tree) and expr_child.data == "await_expr":
                         return True
+
+    # Check if this is a var statement with await (var x = await ...)
+    if stmt.data in ["var_stmt", "func_var_stmt"]:
+        for node in stmt.iter_subtrees():
+            if isinstance(node, Tree) and node.data == "await_expr":
+                return True
+
     return False
 
 

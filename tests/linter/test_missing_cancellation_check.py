@@ -1,6 +1,6 @@
 import pytest
 
-from .common import simple_ok_check, simple_nok_check
+from .common import simple_ok_check, simple_nok_check, multiple_nok_check
 
 
 # fmt: off
@@ -71,6 +71,29 @@ func baz(ct):
 ])
 def test_missing_cancellation_check_nok(code, line):
     simple_nok_check(code, "missing-cancellation-check", line=line, disable=["unused-argument", "missing-cancellation-token-argument"])
+
+
+@pytest.mark.parametrize('code,lines', [
+("""
+func apply(some_args) -> void:
+	var animation_flow: AnimationFlow = _start_animation_flow(target, source_action)
+
+	var applied_result: TimeoutOrSuccess = await animation_flow.applied.wait_with_timeout(10, ct)
+	applied_result.push_error_if_timeout(_applied_error_message_if_timeout(source_action))
+
+	await _apply_effect_async(target, source_action, history, ct)
+	if ct.is_cancelled():
+		_playing_animation_effect = CompletedActionEffectAnimation.new()
+		return
+
+	var ended_wait_result: TimeoutOrSuccess = await animation_flow.ended.wait_with_timeout(10, ct)
+	ended_wait_result.push_error_if_timeout(_ended_error_if_timeout_message(source_action))
+
+	_playing_animation_effect = CompletedActionEffectAnimation.new()
+""", [5, 13]),
+])
+def test_missing_cancellation_check_multiple_nok(code, lines):
+    multiple_nok_check(code, "missing-cancellation-check", lines=lines, disable=["unused-argument", "missing-cancellation-token-argument"])
 
 
 # Tests for gdlint ignore comments
