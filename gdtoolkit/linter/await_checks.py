@@ -18,6 +18,10 @@ def lint(parse_tree: Tree, config: MappingProxyType) -> List[Problem]:
             "missing-cancellation-token-argument",
             _missing_cancellation_token_argument,
         ),
+        (
+            "async-function-name",
+            _async_function_name,
+        ),
     ]
     problem_clusters = (
         x[1](parse_tree) if x[0] not in disable else [] for x in checks_to_run_w_tree
@@ -400,3 +404,43 @@ def _has_file_level_ignore(parse_tree: Tree, check_name: str) -> bool:
                 return True
 
     return False
+
+
+def _async_function_name(parse_tree: Tree) -> List[Problem]:
+    """
+    Check that functions containing await have _async suffix.
+    """
+    from lark import Token
+    problems = []
+
+    # Find all function definitions
+    for func_def in parse_tree.find_data("func_def"):
+        # Check if function contains await
+        if not _contains_await(func_def):
+            continue
+
+        # Get function name
+        func_name = None
+        for child in func_def.children:
+            if isinstance(child, Tree) and child.data == "func_header":
+                for header_child in child.children:
+                    if isinstance(header_child, Token) and header_child.type == "NAME":
+                        func_name = header_child.value
+                        break
+                break
+
+        if func_name is None:
+            continue
+
+        # Check if function name ends with _async
+        if not func_name.endswith("_async"):
+            problems.append(
+                Problem(
+                    name="async-function-name",
+                    description=f"Function '{func_name}' contains await and should have '_async' suffix",
+                    line=get_line(func_def),
+                    column=get_column(func_def),
+                )
+            )
+
+    return problems
