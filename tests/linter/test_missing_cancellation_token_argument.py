@@ -26,6 +26,11 @@ func baz(ct):
     if ct.is_cancelled():
         return
 """,
+"""
+func typed_param(ct: CancellationToken):
+    await async_method(ct)
+    return
+""",
 ])
 def test_missing_cancellation_token_argument_ok(code):
     simple_ok_check(code, disable=["unused-argument", "missing-cancellation-check"])
@@ -45,6 +50,10 @@ func baz(ct):
     await operation1(ct)
     await operation2()
 """, 4),
+("""
+func typed_param(ct: CancellationToken):
+    await async_method()
+""", 3),
 ])
 def test_missing_cancellation_token_argument_nok(code, line):
     simple_nok_check(code, "missing-cancellation-token-argument", line=line, disable=["unused-argument", "missing-cancellation-check"])
