@@ -59,13 +59,25 @@ def _check_function_cancellation(func_def: Tree, problems: List[Problem]) -> Non
     # Get all statements in the function body
     statements = _get_function_statements(func_def)
 
-    # Check each await statement
+    # Check statements recursively
+    _check_statements_for_cancellation(statements, problems)
+
+
+def _check_statements_for_cancellation(statements: List[Tree], problems: List[Problem]) -> None:
+    """Recursively check a list of statements for missing cancellation checks."""
     for i, stmt in enumerate(statements):
-        if _contains_await(stmt):
+        # First, recursively check nested blocks (if/elif/else/for/while/match)
+        # This way we handle await inside if/for/etc blocks
+        _check_nested_blocks(stmt, problems)
+
+        # Then check if THIS specific statement (not nested ones) contains await
+        if _is_await_statement(stmt):
             # Check if the next statement is a cancellation check
             if i + 1 < len(statements):
                 next_stmt = statements[i + 1]
-                if not _is_cancellation_check(next_stmt):
+                # No check needed if next statement is return or cancellation check
+                if not (_is_cancellation_check(next_stmt) or
+                        _is_return_statement(next_stmt)):
                     problems.append(
                         Problem(
                             name="missing-cancellation-check",
@@ -74,16 +86,47 @@ def _check_function_cancellation(func_def: Tree, problems: List[Problem]) -> Non
                             column=get_column(stmt),
                         )
                     )
-            else:
-                # await is the last statement in the function
-                problems.append(
-                    Problem(
-                        name="missing-cancellation-check",
-                        description="await statement not followed by cancellation check (e.g., if ct.is_cancelled())",
-                        line=get_line(stmt),
-                        column=get_column(stmt),
-                    )
-                )
+            # await is the last statement in the block - no check needed
+
+
+def _check_nested_blocks(stmt: Tree, problems: List[Problem]) -> None:
+    """Check nested blocks within a statement (if/elif/else/for/while/match)."""
+    if not isinstance(stmt, Tree):
+        return
+
+    # Check if statement
+    if stmt.data == "if_stmt":
+        for child in stmt.children:
+            if isinstance(child, Tree):
+                # Check if/elif branch
+                if child.data == "if_branch" or child.data == "elif_branch":
+                    branch_stmts = _get_block_statements(child)
+                    _check_statements_for_cancellation(branch_stmts, problems)
+                # Check else branch
+                elif child.data == "else_branch":
+                    branch_stmts = _get_block_statements(child)
+                    _check_statements_for_cancellation(branch_stmts, problems)
+
+    # Check for/while loops
+    elif stmt.data in ["for_stmt", "while_stmt"]:
+        loop_stmts = _get_block_statements(stmt)
+        _check_statements_for_cancellation(loop_stmts, problems)
+
+    # Check match statement
+    elif stmt.data == "match_stmt":
+        for child in stmt.children:
+            if isinstance(child, Tree) and child.data == "match_branch":
+                branch_stmts = _get_block_statements(child)
+                _check_statements_for_cancellation(branch_stmts, problems)
+
+
+def _get_block_statements(block: Tree) -> List[Tree]:
+    """Extract statements from a block (if branch, loop body, etc.)."""
+    statements = []
+    for child in block.children:
+        if isinstance(child, Tree) and child.data.endswith("_stmt"):
+            statements.append(child)
+    return statements
 
 
 def _get_function_statements(func_def: Tree) -> List[Tree]:
@@ -102,8 +145,23 @@ def _get_function_statements(func_def: Tree) -> List[Tree]:
     return statements
 
 
+def _is_await_statement(stmt: Tree) -> bool:
+    """Check if a statement is directly an await expression (not nested in if/for/etc)."""
+    if not isinstance(stmt, Tree):
+        return False
+
+    # Check if this is an expr_stmt containing await
+    if stmt.data == "expr_stmt":
+        for child in stmt.children:
+            if isinstance(child, Tree) and child.data == "expr":
+                for expr_child in child.children:
+                    if isinstance(expr_child, Tree) and expr_child.data == "await_expr":
+                        return True
+    return False
+
+
 def _contains_await(stmt: Tree) -> bool:
-    """Check if a statement contains an await expression."""
+    """Check if a statement contains an await expression (including nested)."""
     from lark import Token
     for node in stmt.iter_subtrees():
         if isinstance(node, Tree) and node.data == "await_expr":
@@ -137,6 +195,13 @@ def _is_cancellation_check(stmt: Tree) -> bool:
                                 return True
 
     return False
+
+
+def _is_return_statement(stmt: Tree) -> bool:
+    """Check if a statement is a return statement."""
+    if not isinstance(stmt, Tree):
+        return False
+    return stmt.data == "return_stmt"
 
 
 def _missing_cancellation_token_argument(parse_tree: Tree) -> List[Problem]:

@@ -28,6 +28,22 @@ func baz(ct):
     if ct.is_cancelled():
         return
 """,
+"""
+func with_return(ct):
+    await operation()
+    return
+""",
+"""
+func last_statement(ct):
+    await operation()
+""",
+"""
+func with_if(ct):
+    if ok:
+        await operation()
+        return
+    await another_operation()
+""",
 ])
 def test_missing_cancellation_check_ok(code):
     simple_ok_check(code, disable=["unused-argument", "missing-cancellation-token-argument"])
@@ -40,8 +56,9 @@ func foo(ct):
     print("missing check")
 """, 3),
 ("""
-func bar(ct):
-    await some_coroutine()
+func chained_awaits(ct):
+    await operation1()
+    await operation2()
 """, 3),
 ("""
 func baz(ct):
