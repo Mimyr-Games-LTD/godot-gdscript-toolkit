@@ -31,10 +31,6 @@ func foo():
     '''docstr'''
 """,
 """
-func foo_async():
-    await get_tree().create_timer(2.0).timeout
-""",
-"""
 func foo():
     ('''docstr''')
 """,

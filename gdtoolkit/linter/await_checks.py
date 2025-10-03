@@ -11,16 +11,20 @@ def lint(parse_tree: Tree, config: MappingProxyType) -> List[Problem]:
     disable = config["disable"]
     checks_to_run_w_tree = [
         (
-            "missing-cancellation-check",
+            "missing-ct-check",
             _missing_cancellation_check,
         ),
         (
-            "missing-cancellation-token-argument",
+            "missing-ct-arg",
             _missing_cancellation_token_argument,
         ),
         (
             "async-function-name",
             _async_function_name,
+        ),
+        (
+            "missing-ct-param",
+            _missing_cancellation_token_parameter,
         ),
     ]
     problem_clusters = (
@@ -84,8 +88,8 @@ def _check_statements_for_cancellation(statements: List[Tree], problems: List[Pr
                         _is_return_statement(next_stmt)):
                     problems.append(
                         Problem(
-                            name="missing-cancellation-check",
-                            description="await statement not followed by cancellation check (e.g., if ct.is_cancelled())",
+                            name="missing-ct-check",
+                            description="await statement not followed by cancellation check (e.g., if ct.is_cancelled()). To ignore: # gdlint: ignore=missing-ct-check",
                             line=get_line(stmt),
                             column=get_column(stmt),
                         )
@@ -250,8 +254,8 @@ def _missing_cancellation_token_argument(parse_tree: Tree) -> List[Problem]:
             if not has_ct_argument:
                 problems.append(
                     Problem(
-                        name="missing-cancellation-token-argument",
-                        description="async method call should pass cancellation token (e.g., await method(ct))",
+                        name="missing-ct-arg",
+                        description="async method call should pass cancellation token (e.g., await method(ct)). To ignore: # gdlint: ignore=missing-ct-arg",
                         line=get_line(await_expr),
                         column=get_column(await_expr),
                     )
@@ -444,7 +448,50 @@ def _async_function_name(parse_tree: Tree) -> List[Problem]:
             problems.append(
                 Problem(
                     name="async-function-name",
-                    description=f"Function '{func_name}' contains await and should have '_async' suffix",
+                    description=f"Function '{func_name}' contains await and should have '_async' suffix. To ignore: # gdlint: ignore=async-function-name",
+                    line=get_line(func_def),
+                    column=get_column(func_def),
+                )
+            )
+
+    return problems
+
+
+def _missing_cancellation_token_parameter(parse_tree: Tree) -> List[Problem]:
+    """
+    Check that functions containing await have a cancellation token parameter.
+    """
+    from lark import Token
+    problems = []
+
+    # Find all function definitions
+    for func_def in parse_tree.find_data("func_def"):
+        # Check if function contains await
+        if not _contains_await(func_def):
+            continue
+
+        # Get cancellation token parameter names from function signature
+        ct_params = _get_cancellation_token_params(func_def)
+
+        # If function has await but no ct parameter, report error
+        if not ct_params:
+            # Get function name for better error message
+            func_name = None
+            for child in func_def.children:
+                if isinstance(child, Tree) and child.data == "func_header":
+                    for header_child in child.children:
+                        if isinstance(header_child, Token) and header_child.type == "NAME":
+                            func_name = header_child.value
+                            break
+                    break
+
+            if func_name is None:
+                continue
+
+            problems.append(
+                Problem(
+                    name="missing-ct-param",
+                    description=f"Function '{func_name}' contains await but has no cancellation token parameter (e.g., ct: CancellationToken). To ignore: # gdlint: ignore=missing-ct-param",
                     line=get_line(func_def),
                     column=get_column(func_def),
                 )
