@@ -1,3 +1,5 @@
+import importlib
+import logging
 import re
 from collections import defaultdict
 from types import MappingProxyType
@@ -13,7 +15,6 @@ from . import (
     format_checks,
     name_checks,
     misc_checks,
-    await_checks,
 )
 
 PASCAL_CASE = r"([A-Z][a-z0-9]*)+"
@@ -49,13 +50,6 @@ DEFAULT_CONFIG = MappingProxyType(
         "unnecessary-pass": None,
         "unused-argument": None,
         "comparison-with-itself": None,
-        # not-in-loop (break/continue) # check in godot
-        # duplicate-argument-name # check in godot
-        # self-assigning-variable # check in godot
-        # comparison-with-callable
-        # duplicate-key # check in godot
-        # unreachable # check in godot
-        # using-constant-test # check in godot
         # class checks
         "class-definitions-order": [
             "tools",
@@ -73,15 +67,9 @@ DEFAULT_CONFIG = MappingProxyType(
             "onreadyprvvars",
             "others",
         ],
-        # useless-super-delegation
         # design checks
-        # max-locals
         "max-returns": 6,
-        # max-branches
-        # max-statements
-        # max-attributes
         "max-public-methods": 20,
-        # max-nested-blocks
         "function-arguments-number": 10,
         # format checks
         "max-file-lines": 1000,
@@ -93,26 +81,8 @@ DEFAULT_CONFIG = MappingProxyType(
         "excluded_directories": {".git"},
         "no-elif-return": None,
         "no-else-return": None,
-        # await checks
-        "missing-ct-check": None,
-        "missing-ct-arg": None,
-        "async-function-name": None,
-        "missing-ct-param": None,
-        # never-returning-function # for non-void, typed functions
-        # simplify-boolean-expression
-        # consider-using-in
-        # inconsistent-return-statements
-        # redefined-argument-from-local
-        # chained-comparison
-        # unused-variable
-        # pointless-statement
-        # magic values
-        # misc-redundant-expression
-        # https://clang.llvm.org/extra/clang-tidy/checks/misc-redundant-expression.html
-        # readability-magic-numbers
-        # https://clang.llvm.org/extra/clang-tidy/checks/readability-magic-numbers.html
-        # bugprone-virtual-near-miss
-        # ~ https://clang.llvm.org/extra/clang-tidy/checks/list.html
+        # plugins
+        "plugins": [],
     }
 )
 
@@ -127,7 +97,15 @@ def lint_code(
     problems += class_checks.lint(parse_tree, config)
     problems += basic_checks.lint(parse_tree, config)
     problems += misc_checks.lint(parse_tree, config)
-    problems += await_checks.lint(parse_tree, config)
+
+    for plugin_path in config.get("plugins", []):
+        try:
+            module = importlib.import_module(plugin_path)
+            problems += module.lint(parse_tree, config)
+        except ImportError:
+            logging.warning("gdlint plugin '%s' not found - skipping", plugin_path)
+        except Exception as exc:
+            logging.warning("gdlint plugin '%s' failed: %s", plugin_path, exc)
 
     problems_to_lines_where_they_are_inactive = _fetch_problem_inactivity_lines(
         gdscript_code
