@@ -1,3 +1,5 @@
+import importlib
+import logging
 import re
 from collections import defaultdict
 from types import MappingProxyType
@@ -92,6 +94,7 @@ DEFAULT_CONFIG = MappingProxyType(
         "excluded_directories": {".git"},
         "no-elif-return": None,
         "no-else-return": None,
+        "plugins": [],
         # never-returning-function # for non-void, typed functions
         # simplify-boolean-expression
         # consider-using-in
@@ -121,6 +124,15 @@ def lint_code(
     problems += class_checks.lint(parse_tree, config)
     problems += basic_checks.lint(parse_tree, config)
     problems += misc_checks.lint(parse_tree, config)
+
+    for plugin_path in config.get("plugins", []):
+        try:
+            module = importlib.import_module(plugin_path)
+            problems += module.lint(parse_tree, config)
+        except ImportError:
+            logging.warning("gdlint plugin '%s' not found - skipping", plugin_path)
+        except Exception as exc:
+            logging.warning("gdlint plugin '%s' failed: %s", plugin_path, exc)
 
     problems_to_lines_where_they_are_inactive = _fetch_problem_inactivity_lines(
         gdscript_code
