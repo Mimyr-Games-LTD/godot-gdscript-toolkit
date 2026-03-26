@@ -206,7 +206,7 @@ gdlint supports external plugins for custom lint rules. A plugin is a Python mod
 from types import MappingProxyType
 from typing import List
 
-from lark import Tree
+from lark import Tree, Token
 from gdtoolkit.linter.problem import Problem
 from gdtoolkit.common.utils import get_line, get_column
 
@@ -215,18 +215,16 @@ def lint(parse_tree: Tree, config: MappingProxyType) -> List[Problem]:
     if "no-print-statement" in config.get("disable", []):
         return []
     problems = []
-    for node in parse_tree.iter_subtrees():
-        if node.data == "expr_stmt":
-            for child in node.children:
-                if hasattr(child, "data") and child.data == "getattr":
-                    continue
-                if str(child) == "print":
-                    problems.append(Problem(
-                        name="no-print-statement",
-                        description="Avoid using print() in production code",
-                        line=get_line(child),
-                        column=get_column(child),
-                    ))
+    for call_node in parse_tree.find_data("standalone_call"):
+        for child in call_node.children:
+            if isinstance(child, Token) and child.value == "print":
+                problems.append(Problem(
+                    name="no-print-statement",
+                    description="Avoid using print() in production code",
+                    line=get_line(child),
+                    column=get_column(child),
+                ))
+            break
     return problems
 ```
 
@@ -253,7 +251,17 @@ my_script.gd:5: Error: Avoid using print() in production code (no-print-statemen
 
 ### How plugins are loaded
 
-Plugins are loaded via `importlib.import_module()`, so any module on Python's `sys.path` works. The current working directory is included in `sys.path` by default, which is why local `.py` files are found automatically.
+Plugin names can be either **module names** or **relative paths**:
+
+```yaml
+plugins:
+  # module name — loaded via importlib, must be on sys.path
+  - no_print_checks
+  # relative path — loaded from file relative to cwd (no .py extension)
+  - ci/gdlint/no_print_checks
+```
+
+When plugins are configured, the current working directory is automatically added to `sys.path`, so local `.py` files are found by module name. For plugins in subdirectories, use the path form — forward slashes work on all platforms.
 
 Missing or failing plugins are logged as warnings and skipped — they won't crash the linter.
 
