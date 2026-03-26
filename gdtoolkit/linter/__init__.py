@@ -81,8 +81,22 @@ DEFAULT_CONFIG = MappingProxyType(
         "excluded_directories": {".git"},
         "no-elif-return": None,
         "no-else-return": None,
-        # plugins
         "plugins": [],
+        # never-returning-function # for non-void, typed functions
+        # simplify-boolean-expression
+        # consider-using-in
+        # inconsistent-return-statements
+        # redefined-argument-from-local
+        # chained-comparison
+        # unused-variable
+        # pointless-statement
+        # magic values
+        # misc-redundant-expression
+        # https://clang.llvm.org/extra/clang-tidy/checks/misc-redundant-expression.html
+        # readability-magic-numbers
+        # https://clang.llvm.org/extra/clang-tidy/checks/readability-magic-numbers.html
+        # bugprone-virtual-near-miss
+        # ~ https://clang.llvm.org/extra/clang-tidy/checks/list.html
     }
 )
 
