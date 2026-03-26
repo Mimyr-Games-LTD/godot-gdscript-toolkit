@@ -53,13 +53,6 @@ DEFAULT_CONFIG = MappingProxyType(
         "unnecessary-pass": None,
         "unused-argument": None,
         "comparison-with-itself": None,
-        # not-in-loop (break/continue) # check in godot
-        # duplicate-argument-name # check in godot
-        # self-assigning-variable # check in godot
-        # comparison-with-callable
-        # duplicate-key # check in godot
-        # unreachable # check in godot
-        # using-constant-test # check in godot
         # class checks
         "class-definitions-order": [
             "tools",
@@ -77,15 +70,9 @@ DEFAULT_CONFIG = MappingProxyType(
             "onreadyprvvars",
             "others",
         ],
-        # useless-super-delegation
         # design checks
-        # max-locals
         "max-returns": 6,
-        # max-branches
-        # max-statements
-        # max-attributes
         "max-public-methods": 20,
-        # max-nested-blocks
         "function-arguments-number": 10,
         # format checks
         "max-file-lines": 1000,
